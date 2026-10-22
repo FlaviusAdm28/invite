@@ -32,9 +32,12 @@
   const replayBtn = hero.querySelector('.replay');
   const pull = hero.querySelector('.pull');
   const cuts = [...hero.querySelectorAll('.cut')];
+  const depth = hero.querySelector('.depth');
+  const motionBtn = hero.querySelector('.motion');
 
   const reduceMq = matchMedia('(prefers-reduced-motion: reduce)');
   const framedMq = matchMedia('(min-aspect-ratio: 4/5)');
+  const coarseMq = matchMedia('(hover: none) and (pointer: coarse)');
 
   const PULL_TOUCH = 130; // px of downward drag at the very top
   const PULL_WHEEL = 340; // accumulated upward wheel delta at the very top
@@ -48,6 +51,8 @@
     run: 0,
     endedAt: 0,
   };
+  // Gyroscope depth: target (tx, ty) from the sensor, eased (x, y, s) on screen.
+  const motion = { on: false, base: null, tx: 0, ty: 0, x: 0, y: 0, s: 1, raf: 0, visible: true };
   let running = [];
   let timers = [];
 
@@ -58,13 +63,12 @@
   function setPhase(phase) {
     state.phase = phase;
     hero.dataset.phase = phase;
+    kickMotion(); // ease back to centre during a run, resume once settled
   }
 
   function setColour(on) {
     state.coloured = on;
     hero.dataset.colour = on ? 'on' : 'off';
-    hit.setAttribute('aria-pressed', String(on));
-    hit.setAttribute('aria-label', on ? 'Voltar ao preto e branco' : 'Revelar a cor da fotografia');
   }
 
   function anim(el, keyframes, options) {
@@ -91,15 +95,15 @@
     });
   }
 
-  function settle() {
-    if (state.phase === 'settled') return;
+  // Stops the current run on the frame that is on screen; `next` sets the new
+  // CSS state, and removing the frozen inline values lets transitions carry it.
+  function freeze(next) {
     state.run++;
     timers.forEach(clearTimeout);
     timers = [];
 
     const touched = new Set();
     for (const a of running) {
-      // Freeze the frame currently on screen so CSS can transition from it.
       try { a.commitStyles(); } catch (_) { /* element not rendered */ }
       touched.add(a.effect.target);
       a.cancel();
@@ -107,14 +111,21 @@
     running = [];
 
     hero.offsetWidth; // flush: committed values become the transition start
-    setPhase('settled');
+    next();
     touched.forEach((el) => {
       el.style.removeProperty('opacity');
       el.style.removeProperty('transform');
     });
+  }
 
+  function settle() {
+    if (state.phase === 'settled') return;
+    const wasMontage = state.phase === 'montage';
+    freeze(() => setPhase('settled'));
     state.endedAt = now();
     if (!state.interacted) hero.dataset.hint = 'show';
+    // The film has been seen (or skipped): scrolling may now take the visitor on.
+    if (wasMontage) openGate();
   }
 
   // ───────── assets ─────────
@@ -166,10 +177,10 @@
     });
 
     // Chain on the animations themselves, not the wall clock, so a slow device
-    // never cuts the opening short. Rejects (and stops here) if settle() cancels.
-    await Promise.all([desaturate.finished, dated.finished]);
-    await wait(1200, run);
-    await montage(run);
+    // never cuts the opening short. Rejects (and stops here) if the run is frozen.
+    // The montage itself waits for the visitor's first scroll (see the gate below).
+    await Promise.all([desaturate.finished, dated.finished, ...running.map((a) => a.finished)]);
+    if (run === state.run) settle();
   }
 
   // ───────── montage ─────────
@@ -242,19 +253,57 @@
   function replay() {
     if (state.phase !== 'settled' || now() - state.endedAt < COOLDOWN) return;
     state.run++;
+    press = null;
     setColour(false);
     montage(state.run).catch(() => {});
   }
 
-  hit.addEventListener('click', () => {
-    if (state.phase === 'intro' || state.phase === 'montage') { settle(); return; }
+  // Colour is shown only while the photograph is held (finger, mouse or key).
+  const PRESS_SLOP = 14; // px of movement that turns a press into a gesture
+  let press = null;
+
+  function holdColour(id, x, y) {
     if (state.phase !== 'settled') return;
-    setColour(!state.coloured);
+    press = { id, x, y };
+    setColour(true);
     if (!state.interacted) {
       state.interacted = true;
       hero.dataset.hint = 'done';
       replayBtn.hidden = false;
     }
+  }
+
+  function releaseColour(id) {
+    if (!press || (id !== undefined && id !== press.id)) return;
+    press = null;
+    setColour(false);
+  }
+
+  hit.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    holdColour(e.pointerId, e.clientX, e.clientY);
+  });
+  hit.addEventListener('pointermove', (e) => {
+    // Scrolling or pulling to replay is not a press.
+    if (press && e.pointerId === press.id
+      && Math.hypot(e.clientX - press.x, e.clientY - press.y) > PRESS_SLOP) releaseColour(e.pointerId);
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach((type) => {
+    hit.addEventListener(type, (e) => releaseColour(e.pointerId));
+  });
+  hit.addEventListener('contextmenu', (e) => { if (press) e.preventDefault(); });
+
+  hit.addEventListener('keydown', (e) => {
+    if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) holdColour('key', 0, 0);
+  });
+  hit.addEventListener('keyup', (e) => {
+    if (e.key === ' ' || e.key === 'Enter') releaseColour('key');
+  });
+  hit.addEventListener('blur', () => releaseColour());
+
+  // A tap while the film is playing skips to the settled frame.
+  hit.addEventListener('click', () => {
+    if (state.phase === 'intro' || state.phase === 'montage') settle();
   });
 
   replayBtn.addEventListener('click', replay);
@@ -323,17 +372,195 @@
     wheel.idle = setTimeout(() => showPull(0), 260);
   }, { passive: true });
 
+  // ───────── first-scroll gate ─────────
+  //
+  // On the first visit the page is held at the top: the first scroll gesture
+  // plays the montage instead of moving the page, and only once it has ended
+  // (or been skipped) does scrolling take the visitor on. Non-passive listeners
+  // exist only while the gate is closed, plus a short drain afterwards so the
+  // tail of a gesture already in flight does not carry the page down by itself.
+
+  const GATE_SWIPE = 24; // px of upward finger travel that counts as a scroll
+  const GATE_SAFETY = 15000; // ms: the gate always opens, whatever happens
+  const DRAIN_IDLE = 280; // ms without wheel events before scrolling is handed back
+  const gate = { closed: false, triggered: false, queued: false, draining: false, touchY: null, touching: false, idle: 0 };
+  const root = document.documentElement;
+  const nonPassive = { passive: false };
+  const forwardKeys = new Set(['ArrowDown', 'PageDown', 'End', ' ', 'Spacebar']);
+
+  function closeGate() {
+    gate.closed = true;
+    root.classList.add('is-gated');
+    addEventListener('wheel', onGateWheel, nonPassive);
+    addEventListener('touchstart', onGateTouchStart, { passive: true });
+    addEventListener('touchmove', onGateTouchMove, nonPassive);
+    addEventListener('touchend', onGateTouchEnd, { passive: true });
+    addEventListener('touchcancel', onGateTouchEnd, { passive: true });
+    addEventListener('keydown', onGateKey);
+  }
+
+  function openGate() {
+    if (!gate.closed) return;
+    gate.closed = false;
+    gate.draining = true;
+    root.classList.remove('is-gated');
+    drainLater();
+  }
+
+  function removeGate() {
+    gate.draining = false;
+    clearTimeout(gate.idle);
+    removeEventListener('wheel', onGateWheel, nonPassive);
+    removeEventListener('touchstart', onGateTouchStart);
+    removeEventListener('touchmove', onGateTouchMove, nonPassive);
+    removeEventListener('touchend', onGateTouchEnd);
+    removeEventListener('touchcancel', onGateTouchEnd);
+    removeEventListener('keydown', onGateKey);
+  }
+
+  function drainLater() {
+    clearTimeout(gate.idle);
+    gate.idle = setTimeout(() => { if (!gate.touching) removeGate(); }, DRAIN_IDLE);
+  }
+
+  function startFilm() {
+    if (gate.triggered) return;
+    gate.triggered = true;
+    setTimeout(openGate, GATE_SAFETY);
+    if (state.phase === 'loading') { gate.queued = true; return; }
+    if (state.phase === 'montage') return;
+    press = null;
+    // From the opening or the still frame alike: hand over without a jump.
+    freeze(() => { setColour(false); setPhase('montage'); });
+    montage(state.run).catch(() => {});
+  }
+
+  function onGateWheel(e) {
+    e.preventDefault();
+    if (gate.closed) { if (e.deltaY > 2) startFilm(); return; }
+    drainLater(); // still the same gesture: keep swallowing until it pauses
+  }
+  function onGateTouchStart(e) {
+    gate.touching = true;
+    gate.touchY = e.touches[0] ? e.touches[0].clientY : null;
+  }
+  function onGateTouchMove(e) {
+    if (e.touches.length > 1) return; // never block pinch-zoom
+    e.preventDefault();
+    if (gate.closed && gate.touchY != null && e.touches[0]
+      && gate.touchY - e.touches[0].clientY > GATE_SWIPE) startFilm();
+  }
+  function onGateTouchEnd() {
+    gate.touching = false;
+    gate.touchY = null;
+    if (gate.draining) drainLater();
+  }
+  function onGateKey(e) {
+    if (!gate.closed || !forwardKeys.has(e.key)) return;
+    if (e.target.closest && e.target.closest('button, a, input, textarea, select')) return;
+    e.preventDefault();
+    startFilm();
+  }
+
+  // "Convite" is an explicit request to read the invitation: it always goes there.
+  hero.querySelector('.cue').addEventListener('click', () => {
+    if (state.phase === 'intro' || state.phase === 'montage') settle();
+    openGate();
+    removeGate();
+  });
+
   // Leaving the hero, hiding the tab or switching to reduced motion mid-run
   // resolves the sequence instead of letting it play unseen.
   const heroIo = new IntersectionObserver(([entry]) => {
-    if (entry.intersectionRatio < 0.35 && state.phase !== 'loading') settle();
+    motion.visible = entry.intersectionRatio >= 0.35;
+    kickMotion();
+    if (!motion.visible && state.phase !== 'loading') settle();
   }, { threshold: [0.35] });
   heroIo.observe(hero);
 
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden && state.phase !== 'loading') settle();
+    if (!document.hidden) return;
+    releaseColour();
+    if (state.phase !== 'loading') settle();
   });
   reduceMq.addEventListener?.('change', settle);
+
+  // ───────── motion (gyroscope depth, mobile only, opt-in) ─────────
+  //
+  // Offered through a discreet button; iOS shows its permission prompt only
+  // when it is tapped. Sensor events just set a target; one rAF loop eases
+  // towards it and stops itself once the picture is still.
+
+  const TILT = 2.6; // max rotation, degrees
+  const SHIFT = 7; // max photo translation, px
+  const DRIFT = 8; // max title translation, px
+  const ZOOM = 1.09; // cover the edges the tilt would reveal
+  const RANGE = 18; // degrees of device tilt for full effect
+
+  const clamp = (v) => Math.max(-1, Math.min(1, v));
+
+  if ('DeviceOrientationEvent' in window && window.isSecureContext && coarseMq.matches && !reduceMq.matches) {
+    motionBtn.hidden = false;
+  }
+
+  motionBtn.addEventListener('click', async () => {
+    motionBtn.hidden = true;
+    const ask = window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission;
+    try {
+      // Must be called synchronously inside the tap (iOS 13+).
+      if (typeof ask === 'function' && (await ask.call(DeviceOrientationEvent)) !== 'granted') return;
+    } catch (_) {
+      return;
+    }
+    addEventListener('deviceorientation', onOrientation, { passive: true });
+    // No sensor readings after a moment (e.g. a device without a gyroscope): give up quietly.
+    setTimeout(() => {
+      if (!motion.base) removeEventListener('deviceorientation', onOrientation);
+    }, 1500);
+  });
+
+  function onOrientation(e) {
+    if (e.beta == null || e.gamma == null) return;
+    if (!motion.base) {
+      motion.base = { b: e.beta, g: e.gamma };
+      motion.on = true;
+    }
+    // The neutral pose slowly follows how the phone is being held.
+    motion.base.b += (e.beta - motion.base.b) * 0.006;
+    motion.base.g += (e.gamma - motion.base.g) * 0.006;
+    motion.tx = clamp((e.gamma - motion.base.g) / RANGE);
+    motion.ty = clamp((e.beta - motion.base.b) / RANGE);
+    kickMotion();
+  }
+
+  function kickMotion() {
+    if (motion.on && !motion.raf) motion.raf = requestAnimationFrame(stepMotion);
+  }
+
+  function stepMotion() {
+    motion.raf = 0;
+    const live = motion.visible && !framedMq.matches && !reduceMq.matches;
+    const follow = live && state.phase === 'settled';
+    const tx = follow ? motion.tx : 0;
+    const ty = follow ? motion.ty : 0;
+    const ts = live ? ZOOM : 1;
+
+    motion.x += (tx - motion.x) * 0.075;
+    motion.y += (ty - motion.y) * 0.075;
+    motion.s += (ts - motion.s) * 0.06;
+
+    // Tilt never outpaces the zoom that hides the photo's edges.
+    const p = Math.max(0, Math.min(1, (motion.s - 1) / (ZOOM - 1)));
+    const x = motion.x * p;
+    const y = motion.y * p;
+    const s = motion.s;
+    depth.style.transform = `perspective(1100px) translate3d(${(-x * SHIFT).toFixed(2)}px, ${(-y * SHIFT).toFixed(2)}px, 0) `
+      + `rotateX(${(y * TILT).toFixed(3)}deg) rotateY(${(-x * TILT).toFixed(3)}deg) scale(${s.toFixed(4)})`;
+    titles.style.transform = `translate3d(${(x * DRIFT).toFixed(2)}px, ${(y * DRIFT * 0.75).toFixed(2)}px, 0)`;
+
+    const moving = Math.abs(tx - motion.x) + Math.abs(ty - motion.y) + Math.abs(ts - motion.s) > 0.0008;
+    if (moving) kickMotion();
+  }
 
   // ───────── reveal on scroll ─────────
 
@@ -364,7 +591,11 @@
     if (scrollY > innerHeight * 0.5 || document.hidden) { setPhase('intro'); setColour(false); settle(); return; }
     loadCuts();
     intro().catch(() => {});
+    if (gate.queued) { gate.triggered = false; startFilm(); } // scrolled while loading
   });
+
+  // Hold the page only on a fresh arrival at the top, never for reduced motion.
+  if (scrollY <= 0 && !location.hash && !reduceMq.matches) closeGate();
 
   // Never stay on a black screen if the photograph is slow or fails.
   setTimeout(() => {

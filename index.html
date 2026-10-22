@@ -23,6 +23,7 @@
 
 <header class="hero" data-phase="loading" data-colour="on" data-hint="hidden">
   <div class="stage">
+    <div class="depth">
     <div class="plate">
       <img class="shot shot--mono" alt=""
            src="media/web/main-bw-1080.jpg"
@@ -49,10 +50,11 @@
       <img class="cut" alt="" data-photo="343" data-hold="300" style="--x:50%">
       <img class="cut" alt="" data-photo="326" data-hold="440" style="--x:56%">
     </div>
+    </div>
 
     <div class="grain" aria-hidden="true"></div>
     <div class="scrim" aria-hidden="true"></div>
-    <button class="hit" type="button" aria-pressed="false" aria-label="Revelar a cor da fotografia"></button>
+    <button class="hit" type="button" aria-label="Manter premido para revelar a cor da fotografia"></button>
   </div>
 
   <div class="titles">
@@ -64,8 +66,11 @@
   </div>
 
   <div class="bar">
-    <p class="hint" aria-hidden="true"><span class="hint__touch">Toca para revelar</span><span class="hint__mouse">Clica para revelar</span></p>
-    <button class="replay" type="button" hidden>Rever</button>
+    <div class="bar__main">
+      <button class="motion" type="button" hidden>Ativar movimento</button>
+      <p class="hint" aria-hidden="true"><span class="hint__touch">Mantém premido<br>para ver a cor</span><span class="hint__mouse">Mantém o clique<br>para ver a cor</span></p>
+      <button class="replay" type="button" hidden>Rever</button>
+    </div>
     <a class="cue" href="#convite">Convite</a>
   </div>
 

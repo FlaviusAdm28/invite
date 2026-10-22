@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "images": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/optimize-images.ps1",
+    "cert": "node scripts/make-cert.js",
+    "images":"powershell -NoProfile -ExecutionPolicy Bypass -File scripts/optimize-images.ps1",
     "check": "node --check index.js && node --check src/main.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

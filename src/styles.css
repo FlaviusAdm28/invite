@@ -31,7 +31,12 @@ html {
   overflow-x: hidden;
   /* Pull-down at the top replays the film; keep browsers from reloading instead. */
   overscroll-behavior-y: none;
+  /* The scrollbar disappears while the page is held: keep its space so nothing shifts. */
+  scrollbar-gutter: stable;
 }
+
+/* First visit: held at the top until the montage has played (see main.js). */
+html.is-gated { overflow: hidden; }
 
 body {
   margin: 0;
@@ -70,6 +75,7 @@ em { font-style: italic; }
   background: var(--charcoal);
 }
 
+.depth,
 .plate,
 .cuts,
 .grain,
@@ -94,8 +100,10 @@ em { font-style: italic; }
 
 .shot--colour {
   opacity: 0;
-  transition: opacity 1.9s var(--ease-soft);
+  transition: opacity 1.4s var(--ease-soft);
 }
+/* Colour comes in a touch faster than it leaves while the photo is held. */
+.hero[data-colour="on"][data-phase="settled"] .shot--colour { transition-duration: 1s; }
 .hero[data-colour="on"] .shot--colour { opacity: 1; }
 
 .cut {
@@ -116,8 +124,8 @@ em { font-style: italic; }
 .scrim {
   pointer-events: none;
   top: auto;
-  height: 30%;
-  background: linear-gradient(to top, rgba(14, 12, 10, .5), rgba(14, 12, 10, 0));
+  height: 36%;
+  background: linear-gradient(to top, rgba(14, 12, 10, .62), rgba(14, 12, 10, .3) 45%, rgba(14, 12, 10, 0));
 }
 
 .hit {
@@ -129,6 +137,9 @@ em { font-style: italic; }
   background: transparent;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none; /* holding must not open the iOS callout */
+  -webkit-user-select: none;
+  user-select: none;
   touch-action: manipulation;
 }
 .hit:focus-visible { outline-offset: -12px; outline-color: var(--ivory); }
@@ -182,6 +193,42 @@ em { font-style: italic; }
   transition: opacity .9s var(--ease-soft), transform .9s var(--ease-out);
 }
 
+/* Gyroscope depth: the photograph tilts, the titles drift as a plane in front.
+   Both are driven from script with transform only. */
+.depth { transform-origin: 52% 46%; }
+
+.motion {
+  display: inline-flex;
+  align-items: center;
+  gap: .9em;
+  min-height: 44px;
+  margin-bottom: 10px;
+  padding: 0 18px 0 15px;
+  white-space: nowrap; /* may extend over the column above "Convite" on narrow phones */
+  border: 1px solid rgba(242, 237, 228, .6);
+  border-radius: 999px;
+  background: rgba(20, 18, 16, .22);
+  color: var(--ivory);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: .26em;
+  text-transform: uppercase;
+  pointer-events: auto;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity .8s var(--ease-soft);
+}
+.motion::before {
+  content: "";
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+}
+.motion[hidden] { display: none; }
+.hero:not([data-phase="settled"]) .motion { opacity: 0; pointer-events: none; }
+
 /* Bottom bar: hint / replay on the left, way in to the invitation on the right. */
 .bar {
   position: absolute;
@@ -190,7 +237,7 @@ em { font-style: italic; }
   right: calc(var(--safe-r) + var(--gutter));
   bottom: calc(var(--safe-b) + clamp(10px, 2.6svh, 26px));
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
   color: var(--ivory);
@@ -201,16 +248,26 @@ em { font-style: italic; }
   pointer-events: none;
 }
 
+.bar__main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
 .hint,
 .replay,
 .cue {
-  min-height: 44px;
+  min-height: 48px;
   display: inline-flex;
   align-items: center;
 }
 
 .hint {
   margin: 0;
+  white-space: nowrap;
+  line-height: 1.7;
+  letter-spacing: .24em;
   opacity: 0;
   transition: opacity 1.2s var(--ease-soft);
 }
@@ -224,33 +281,41 @@ em { font-style: italic; }
 }
 
 .replay {
-  padding: 0;
+  min-width: 48px;
+  padding: 0 12px 0 0;
   border: 0;
   background: none;
   font: inherit;
-  letter-spacing: inherit;
+  font-size: 13px;
+  letter-spacing: .24em;
   text-transform: inherit;
   cursor: pointer;
   pointer-events: auto;
-  opacity: .82;
+  opacity: .92;
+  -webkit-tap-highlight-color: transparent;
   transition: opacity .4s;
 }
-.replay::before { content: "↺"; margin-right: .7em; letter-spacing: 0; font-size: 1.25em; }
+.replay::before { content: "↺"; margin-right: .6em; letter-spacing: 0; font-size: 1.6em; line-height: 1; }
 .replay[hidden] { display: none; }
 .hero:not([data-phase="settled"]) .replay { opacity: 0; pointer-events: none; }
 
 .cue {
+  flex: none;
   margin-left: auto;
-  gap: 12px;
+  padding-left: 12px;
+  gap: 14px;
   color: inherit;
+  font-size: 13px;
+  letter-spacing: .24em;
   text-decoration: none;
   pointer-events: auto;
-  opacity: .82;
+  opacity: .92;
+  -webkit-tap-highlight-color: transparent;
 }
 .cue::after {
   content: "";
   width: 1px;
-  height: 26px;
+  height: 36px;
   background: currentColor;
   transform-origin: top;
   animation: cue 2.6s var(--ease-soft) infinite;
@@ -261,7 +326,6 @@ em { font-style: italic; }
   55% { transform: scaleY(1); transform-origin: bottom; }
   100% { transform: scaleY(0); transform-origin: bottom; }
 }
-.hero:not([data-phase="settled"]) .cue::after { animation-play-state: paused; }
 
 /* Pull-to-replay feedback (top of the screen). */
 .pull {
@@ -309,6 +373,7 @@ em { font-style: italic; }
   }
 
   .scrim { display: none; }
+  .motion { display: none; }
 
   .titles {
     position: static;
