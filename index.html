@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#141210">
+  <meta name="description" content="Raquel & Flávio — 28.08.2027">
+  <title>Raquel &amp; Flávio · 28.08.2027</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23141210'/%3E%3Ctext x='16' y='22' font-family='Georgia,serif' font-size='16' fill='%23f2ede4' text-anchor='middle'%3ER%26amp;F%3C/text%3E%3C/svg%3E">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400&display=swap">
+
+  <link rel="preload" as="image" href="media/web/main-1080.jpg"
+        imagesrcset="media/web/main-720.jpg 720w, media/web/main-1080.jpg 1080w, media/web/main-1440.jpg 1440w"
+        imagesizes="(min-aspect-ratio: 4/5) 62vh, 100vw" fetchpriority="high">
+  <link rel="stylesheet" href="src/styles.css">
+  <script>document.documentElement.classList.add('js')</script>
+  <script src="src/main.js" defer></script>
+</head>
+<body>
+
+<header class="hero" data-phase="loading" data-colour="on" data-hint="hidden">
+  <div class="stage">
+    <div class="plate">
+      <img class="shot shot--mono" alt=""
+           src="media/web/main-bw-1080.jpg"
+           srcset="media/web/main-bw-720.jpg 720w, media/web/main-bw-1080.jpg 1080w, media/web/main-bw-1440.jpg 1440w"
+           sizes="(min-aspect-ratio: 4/5) 62vh, 100vw" width="1440" height="2157" decoding="async">
+      <img class="shot shot--colour" alt="Raquel e Flávio abraçados ao pôr do sol, entre pinheiros."
+           src="media/web/main-1080.jpg"
+           srcset="media/web/main-720.jpg 720w, media/web/main-1080.jpg 1080w, media/web/main-1440.jpg 1440w"
+           sizes="(min-aspect-ratio: 4/5) 62vh, 100vw" width="1440" height="2157" fetchpriority="high">
+    </div>
+
+    <!-- Montage, in cut order. data-hold: ms on screen; --x: horizontal focus when the frame is cropped. -->
+    <div class="cuts" aria-hidden="true">
+      <img class="cut" alt="" data-photo="023" data-hold="430" style="--x:42%">
+      <img class="cut" alt="" data-photo="022" data-hold="350" style="--x:46%">
+      <img class="cut" alt="" data-photo="103" data-hold="240" style="--x:52%">
+      <img class="cut" alt="" data-photo="156" data-hold="380" style="--x:44%">
+      <img class="cut" alt="" data-photo="170" data-hold="300" style="--x:40%">
+      <img class="cut" alt="" data-photo="154" data-hold="320" style="--x:48%">
+      <img class="cut" alt="" data-photo="184" data-hold="360" style="--x:38%">
+      <img class="cut" alt="" data-photo="297" data-hold="340" style="--x:50%">
+      <img class="cut" alt="" data-photo="171" data-hold="220" style="--x:44%">
+      <img class="cut" alt="" data-photo="335" data-hold="360" style="--x:36%">
+      <img class="cut" alt="" data-photo="343" data-hold="300" style="--x:50%">
+      <img class="cut" alt="" data-photo="326" data-hold="440" style="--x:56%">
+    </div>
+
+    <div class="grain" aria-hidden="true"></div>
+    <div class="scrim" aria-hidden="true"></div>
+    <button class="hit" type="button" aria-pressed="false" aria-label="Revelar a cor da fotografia"></button>
+  </div>
+
+  <div class="titles">
+    <h1 class="names" aria-label="Raquel &amp; Flávio">
+      <span class="line" aria-hidden="true"><span>Raquel</span></span>
+      <span class="line line--second" aria-hidden="true"><span><em>&amp;</em> Flávio</span></span>
+    </h1>
+    <p class="date"><time datetime="2027-08-28">28.08.2027</time></p>
+  </div>
+
+  <div class="bar">
+    <p class="hint" aria-hidden="true"><span class="hint__touch">Toca para revelar</span><span class="hint__mouse">Clica para revelar</span></p>
+    <button class="replay" type="button" hidden>Rever</button>
+    <a class="cue" href="#convite">Convite</a>
+  </div>
+
+  <span class="pull" aria-hidden="true"></span>
+</header>
+
+<main>
+  <section class="intertitle" aria-label="Prólogo">
+    <p class="intertitle__text">
+      <span data-reveal>Há dias que se tornam memórias.</span>
+      <span data-reveal style="--d:.45s">E memórias que ficam para sempre.</span>
+    </p>
+  </section>
+
+  <section class="invite" id="convite" aria-labelledby="invite-title">
+    <p class="eyebrow" data-reveal>Convite</p>
+    <p class="invite__lead" id="invite-title" data-reveal>Temos o prazer de vos convidar para celebrar connosco o início deste novo capítulo.</p>
+
+    <figure class="invite__photo" data-reveal>
+      <img src="media/web/156-1080.jpg"
+           srcset="media/web/156-720.jpg 720w, media/web/156-1080.jpg 1080w"
+           sizes="(min-width: 900px) 34vw, 72vw" width="1080" height="1618"
+           loading="lazy" decoding="async" alt="Raquel de perfil, de olhos fechados, com uma touca de renda; Flávio atrás, desfocado.">
+    </figure>
+
+    <div class="invite__names" data-reveal>
+      <p class="names names--invite"><span>Raquel</span> <em>&amp;</em> <span>Flávio</span></p>
+      <p class="invite__date"><time datetime="2027-08-28">28 de agosto de 2027</time></p>
+    </div>
+  </section>
+
+  <!--
+    Detalhes do casamento. Cada secção está pronta mas oculta (atributo `hidden`).
+    Quando os dados estiverem definidos: preencher o conteúdo e remover `hidden`,
+    e retirar a nota "em breve" abaixo.
+  -->
+  <section class="details" aria-label="Informações">
+    <article class="detail" hidden>
+      <h2 class="detail__title">Cerimónia</h2>
+      <p class="detail__body"><!-- Local --></p>
+      <p class="detail__meta"><!-- Horário --></p>
+    </article>
+    <article class="detail" hidden>
+      <h2 class="detail__title">Celebração</h2>
+      <p class="detail__body"><!-- Local --></p>
+      <p class="detail__meta"><!-- Horário --></p>
+    </article>
+    <article class="detail" hidden>
+      <h2 class="detail__title">Como chegar</h2>
+      <p class="detail__body"><!-- Indicações de acesso --></p>
+      <a class="detail__link" href="#"><!-- Abrir no mapa --></a>
+    </article>
+    <article class="detail" hidden>
+      <h2 class="detail__title">Confirmação de presença</h2>
+      <p class="detail__body"><!-- Data limite / instruções --></p>
+      <a class="detail__link" href="#"><!-- Confirmar --></a>
+    </article>
+    <article class="detail" hidden>
+      <h2 class="detail__title">Informações</h2>
+      <p class="detail__body"><!-- Notas para os convidados --></p>
+    </article>
+
+    <p class="details__soon" data-reveal>Local, horário e confirmação de presença serão partilhados em breve.</p>
+  </section>
+
+  <figure class="coda" data-reveal>
+    <img src="media/web/114-1080.jpg"
+         srcset="media/web/114-720.jpg 720w, media/web/114-1080.jpg 1080w"
+         sizes="(min-width: 900px) 40vw, 100vw" width="1080" height="1618"
+         loading="lazy" decoding="async" alt="Raquel e Flávio numa encosta ao fim da tarde, com a serra ao fundo.">
+  </figure>
+</main>
+
+<footer class="footer">
+  <p class="footer__mark">R <em>&amp;</em> F</p>
+  <p class="footer__date">28.08.2027</p>
+  <p class="footer__credit">Fotografia — Helder Couto</p>
+</footer>
+
+</body>
+</html>

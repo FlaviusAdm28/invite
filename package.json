@@ -1,0 +1,13 @@
+{
+  "name": "INVITE",
+  "version": "1.0.0",
+  "description": "Raquel & Flávio — convite de casamento, 28.08.2027",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "images": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/optimize-images.ps1",
+    "check": "node --check index.js && node --check src/main.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "private": true
+}
