@@ -21,7 +21,7 @@
 </head>
 <body>
 
-<header class="hero" data-phase="loading" data-colour="on" data-hint="hidden">
+<header class="hero" data-phase="loading" data-colour="on" data-hint="hidden" data-watched="no">
   <div class="stage">
     <div class="depth">
     <div class="plate">
@@ -35,21 +35,11 @@
            sizes="(min-aspect-ratio: 4/5) 62vh, 100vw" width="1440" height="2157" fetchpriority="high">
     </div>
 
-    <!-- Montage, in cut order. data-hold: ms on screen; --x: horizontal focus when the frame is cropped. -->
-    <div class="cuts" aria-hidden="true">
-      <img class="cut" alt="" data-photo="023" data-hold="430" style="--x:42%">
-      <img class="cut" alt="" data-photo="022" data-hold="350" style="--x:46%">
-      <img class="cut" alt="" data-photo="103" data-hold="240" style="--x:52%">
-      <img class="cut" alt="" data-photo="156" data-hold="380" style="--x:44%">
-      <img class="cut" alt="" data-photo="170" data-hold="300" style="--x:40%">
-      <img class="cut" alt="" data-photo="154" data-hold="320" style="--x:48%">
-      <img class="cut" alt="" data-photo="184" data-hold="360" style="--x:38%">
-      <img class="cut" alt="" data-photo="297" data-hold="340" style="--x:50%">
-      <img class="cut" alt="" data-photo="171" data-hold="220" style="--x:44%">
-      <img class="cut" alt="" data-photo="335" data-hold="360" style="--x:36%">
-      <img class="cut" alt="" data-photo="343" data-hold="300" style="--x:50%">
-      <img class="cut" alt="" data-photo="326" data-hold="440" style="--x:56%">
-    </div>
+    <!-- The save-the-date film. It is only on screen while it plays: before and after,
+         the cover photograph above is what rests here (see main.js). -->
+    <video class="reel" src="media/web/film-720.mp4" preload="none" playsinline webkit-playsinline
+           disablepictureinpicture disableremoteplayback x-webkit-airplay="deny"
+           aria-label="Filme save the date de Raquel e Flávio"></video>
     </div>
 
     <div class="grain" aria-hidden="true"></div>
@@ -69,7 +59,11 @@
     <div class="bar__main">
       <button class="motion" type="button" hidden>Ativar movimento</button>
       <p class="hint" aria-hidden="true"><span class="hint__touch">Mantém premido<br>para ver a cor</span><span class="hint__mouse">Mantém o clique<br>para ver a cor</span></p>
-      <button class="replay" type="button" hidden>Rever</button>
+      <button class="replay" type="button"><span class="replay__first">Ver o filme</span><span class="replay__again">Rever</span></button>
+      <div class="reel-ctrl">
+        <button class="skip" type="button">Saltar</button>
+        <button class="sound" type="button" aria-pressed="true"><span class="sound__bars" aria-hidden="true"><i></i><i></i><i></i></span><span class="sound__on">Som</span><span class="sound__off">Ativar som</span></button>
+      </div>
     </div>
     <a class="cue" href="#convite">Convite</a>
   </div>

@@ -16,10 +16,11 @@ const types = {
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
   '.jpg': 'image/jpeg',
+  '.mp4': 'video/mp4',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
 };
-const allowed = /^\/(index\.html|src\/[\w.-]+|media\/web\/[\w.-]+\.jpg)$/;
+const allowed = /^\/(index\.html|src\/[\w.-]+|media\/web\/[\w.-]+\.(jpg|mp4))$/;
 
 function handler(req, res) {
   let url = decodeURIComponent(new URL(req.url, 'http://x').pathname);
@@ -34,11 +35,27 @@ function handler(req, res) {
       res.writeHead(404).end('Not found');
       return;
     }
-    res.writeHead(200, {
+    const headers = {
       'Content-Type': types[path.extname(file)] || 'application/octet-stream',
-      'Content-Length': stat.size,
+      'Accept-Ranges': 'bytes',
       'Cache-Control': url.startsWith('/media/') ? 'public, max-age=31536000, immutable' : 'no-cache',
-    });
+    };
+    // Byte ranges: Safari will not play a video without them, and seeking relies on them.
+    const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
+    if (range && (range[1] || range[2])) {
+      let start = range[1] ? Number(range[1]) : Math.max(0, stat.size - Number(range[2]));
+      let end = range[1] && range[2] ? Math.min(Number(range[2]), stat.size - 1) : stat.size - 1;
+      if (start > end || start >= stat.size) {
+        res.writeHead(416, { 'Content-Range': `bytes */${stat.size}` }).end();
+        return;
+      }
+      res.writeHead(206, { ...headers, 'Content-Range': `bytes ${start}-${end}/${stat.size}`, 'Content-Length': end - start + 1 });
+      if (req.method === 'HEAD') { res.end(); return; }
+      fs.createReadStream(file, { start, end }).pipe(res);
+      return;
+    }
+    res.writeHead(200, { ...headers, 'Content-Length': stat.size });
+    if (req.method === 'HEAD') { res.end(); return; }
     fs.createReadStream(file).pipe(res);
   });
 }
