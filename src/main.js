@@ -4,7 +4,8 @@
 //   loading  → waiting for the main photograph (and fonts, briefly)
 //   intro    → colour photograph, slow push-in, desaturation, titles
 //   settled  → the cover: black & white, hold for colour, "Ver o filme" / "Rever"
-//   film     → the save-the-date film plays over the cover, then dissolves back
+//   film     → the save-the-date film plays over the cover, then dissolves back:
+//              the short cut the first time, the full film on "Rever"
 //
 // hero[data-reel] carries the film's own transition: wait (asked to play, the
 // cover still showing) → on (picture up) → off (dissolving back to the cover).
@@ -60,7 +61,7 @@
     interacted: false,
     run: 0,
     endedAt: 0,
-    plays: 0, // the first play is with sound; replays start muted
+    plays: 0, // the first play is the short cut, every replay the full film
     watched: false,
   };
   // Gyroscope depth: target (tx, ty) from the sensor, eased (x, y, s) on screen.
@@ -224,6 +225,32 @@
     soundBtn.setAttribute('aria-label', on ? 'Desligar o som' : 'Ligar o som');
   }
 
+  // Sound is on by default. When the browser refuses it (no gesture yet: a mouse
+  // wheel, or a swipe on some phones) the film carries on muted, and the very
+  // first tap, click or key anywhere — the first gesture the browser accepts —
+  // turns it on, without having to find the icon.
+  let refused = false;
+  let unmutedAt = -Infinity;
+
+  function soundRefused() {
+    setSound(false);
+    refused = true;
+    nudge(soundBtn);
+  }
+
+  function claimSound(e) {
+    if (!refused || state.phase !== 'film') return;
+    // The icon, "Saltar" and "Convite" do their own thing.
+    if (e.target.closest && e.target.closest('.sound, .skip, .cue')) return;
+    refused = false;
+    unmutedAt = now();
+    setSound(true);
+    if (canFade) reel.volume = 1;
+  }
+  // pointerup, not pointerdown: on touch screens only the lift counts as a gesture.
+  addEventListener('pointerup', claimSound, true);
+  addEventListener('keydown', claimSound, true);
+
   function nudge(el) {
     el.classList.remove('is-nudged');
     el.offsetWidth; // restart the animation
@@ -231,7 +258,7 @@
   }
 
   function playFilm() {
-    const sound = state.plays === 0;
+    const src = state.plays === 0 ? reel.dataset.short : reel.dataset.long;
     press = null;
     freeze(() => { setColour(false); setPhase('film'); });
     const run = state.run;
@@ -243,21 +270,22 @@
     cancelAnimationFrame(fadeRaf); // a fade-out from the last run may still be going
     // Still running from the last dissolve: stop it, so "playing" fires again on restart.
     if (!reel.paused) pauseReel();
+    if (reel.getAttribute('src') !== src) reel.src = src;
     try { reel.currentTime = 0; } catch (_) { /* no metadata yet: it starts at 0 anyway */ }
     // The sound eases in only after a real gesture. Without one (a mouse wheel), it
     // asks at full volume so the browser decides at once: Chrome lets a silent
     // video start and then pauses it the moment it becomes audible.
     const activated = !navigator.userActivation || navigator.userActivation.isActive;
-    if (canFade) reel.volume = sound && activated ? 0 : 1;
-    setSound(sound);
+    if (canFade) reel.volume = activated ? 0 : 1;
+    refused = false;
+    setSound(true);
 
     const started = reel.play();
     if (started && started.catch) {
       started.catch((err) => {
         if (token !== reelToken || state.phase !== 'film') return;
         if (err && err.name === 'NotAllowedError' && !reel.muted) {
-          setSound(false);
-          nudge(soundBtn);
+          soundRefused();
           reel.play().catch(() => { if (token === reelToken) settle(); });
         } else if (!err || err.name !== 'AbortError') {
           settle();
@@ -274,7 +302,15 @@
     const token = reelToken;
     if (canFade) fadeVolume(0, REEL_OUT * 0.8);
     else if (reel.currentTime < reel.duration - REEL_LEAD - 0.2) reel.muted = true; // skipped: cut the sound
-    setTimeout(() => { if (token === reelToken) pauseReel(); }, REEL_OUT);
+    setTimeout(() => {
+      if (token !== reelToken) return;
+      pauseReel();
+      // Get the full film ready for "Rever" without downloading all of it yet.
+      if (reel.getAttribute('src') !== reel.dataset.long) {
+        reel.preload = 'metadata';
+        reel.src = reel.dataset.long;
+      }
+    }, REEL_OUT);
   }
 
   // The picture comes up only once frames are really moving, so a slow start
@@ -290,8 +326,7 @@
   reel.addEventListener('pause', () => {
     if (selfPause || reel.ended || document.hidden || state.phase !== 'film' || reel.muted) return;
     const token = reelToken;
-    setSound(false);
-    nudge(soundBtn);
+    soundRefused();
     reel.play().catch(() => { if (token === reelToken) settle(); });
   });
 
@@ -306,6 +341,7 @@
   reel.addEventListener('error', () => { if (state.phase === 'film') settle(); });
 
   soundBtn.addEventListener('click', () => {
+    refused = false; // a choice made with the icon is final for this film
     const on = reel.muted;
     setSound(on);
     if (on && canFade) reel.volume = 1;
@@ -366,7 +402,7 @@
   // at the controls: a stray tap must not cut it short.
   hit.addEventListener('click', () => {
     if (state.phase === 'intro') settle();
-    else if (state.phase === 'film') nudge(skipBtn);
+    else if (state.phase === 'film' && now() - unmutedAt > 600) nudge(skipBtn); // that tap was for the sound
   });
 
   replayBtn.addEventListener('click', () => {
@@ -499,7 +535,7 @@
 
   // Scrolling while the film plays does nothing but point at "Saltar".
   function nudgeSkip() {
-    if (state.phase !== 'film' || now() - gate.nudged < 1200) return;
+    if (state.phase !== 'film' || now() - gate.nudged < 1200 || now() - unmutedAt < 600) return;
     gate.nudged = now();
     nudge(skipBtn);
   }
@@ -563,7 +599,7 @@
         pauseReel();
       } else if (pausedHidden) {
         pausedHidden = false;
-        reel.play().catch(() => { setSound(false); reel.play().catch(() => settle()); });
+        reel.play().catch(() => { soundRefused(); reel.play().catch(() => settle()); });
       }
       return;
     }

@@ -1,11 +1,16 @@
 # Encodes the save-the-date film for the web. The original is never modified.
-# Output: /media/web/film-720.mp4 — 720x1280 H.264 + AAC, moov at the front so it
+# Output: /media/web/<Name>-720.mp4 — 720x1280 H.264 + AAC, moov at the front so it
 # starts playing before it has fully downloaded.
-# Usage: npm run film -- "D:\caminho\para\o\filme.mp4"
-param([Parameter(Mandatory = $true)][string]$Source)
+# Usage:
+#   npm run film -- "D:\caminho\filme-28s.mp4" film-short   (the opening)
+#   npm run film -- "D:\caminho\filme-47s.mp4" film-long    ("Rever")
+param(
+  [Parameter(Mandatory = $true)][string]$Source,
+  [ValidateSet('film-short', 'film-long')][string]$Name = 'film-long'
+)
 
 $root = Split-Path -Parent $PSScriptRoot
-$out = Join-Path $root 'media\web\film-720.mp4'
+$out = Join-Path $root "media\web\$Name-720.mp4"
 
 $ffmpeg = (Get-Command ffmpeg -ErrorAction SilentlyContinue).Source
 if (-not $ffmpeg) {

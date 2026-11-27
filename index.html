@@ -37,7 +37,9 @@
 
     <!-- The save-the-date film. It is only on screen while it plays: before and after,
          the cover photograph above is what rests here (see main.js). -->
-    <video class="reel" src="media/web/film-720.mp4" preload="none" playsinline webkit-playsinline
+    <!-- The opening plays the short cut; "Rever" plays the full film. -->
+    <video class="reel" src="media/web/film-short-720.mp4" preload="none" playsinline webkit-playsinline
+           data-short="media/web/film-short-720.mp4" data-long="media/web/film-long-720.mp4"
            disablepictureinpicture disableremoteplayback x-webkit-airplay="deny"
            aria-label="Filme save the date de Raquel e Flávio"></video>
     </div>
@@ -62,7 +64,13 @@
       <button class="replay" type="button"><span class="replay__first">Ver o filme</span><span class="replay__again">Rever</span></button>
       <div class="reel-ctrl">
         <button class="skip" type="button">Saltar</button>
-        <button class="sound" type="button" aria-pressed="true"><span class="sound__bars" aria-hidden="true"><i></i><i></i><i></i></span><span class="sound__on">Som</span><span class="sound__off">Ativar som</span></button>
+        <button class="sound" type="button" aria-pressed="true" aria-label="Desligar o som">
+          <svg class="sound__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M3.5 9.5h3.4L11.5 5.6v12.8l-4.6-3.9H3.5z"/>
+            <path class="sound__waves" d="M14.8 9.2a4 4 0 0 1 0 5.6M17.4 6.6a7.6 7.6 0 0 1 0 10.8"/>
+            <path class="sound__mute" d="M15.5 9.5l5 5M20.5 9.5l-5 5"/>
+          </svg>
+        </button>
       </div>
     </div>
     <a class="cue" href="#convite">Convite</a>

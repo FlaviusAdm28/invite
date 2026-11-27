@@ -59,8 +59,11 @@ em { font-style: italic; }
 
 .hero {
   position: relative;
+  /* The whole screen, edge to edge: on iOS Safari the photograph and the film run
+     on under the status bar and the (translucent) toolbar instead of stopping short
+     of them. svh would leave those strips to the page background. */
   height: 100vh;
-  height: 100svh;
+  height: 100lvh;
   min-height: 480px;
   overflow: hidden;
   background: var(--charcoal);
@@ -257,6 +260,9 @@ em { font-style: italic; }
   left: calc(var(--safe-l) + var(--gutter));
   right: calc(var(--safe-r) + var(--gutter));
   bottom: calc(var(--safe-b) + clamp(10px, 2.6svh, 26px));
+  /* …but the controls stay clear of the browser's toolbar: lift them by the part
+     of the screen it covers (lvh − svh, zero where there is no toolbar). */
+  bottom: calc(var(--safe-b) + clamp(10px, 2.6svh, 26px) + (100lvh - 100svh));
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -361,32 +367,24 @@ em { font-style: italic; }
   -webkit-tap-highlight-color: transparent;
 }
 .skip::after { content: "→"; margin-left: .7em; letter-spacing: 0; }
-.sound { padding-left: 14px; gap: .9em; }
-.sound__off { display: none; }
-.sound[aria-pressed="false"] .sound__on { display: none; }
-.sound[aria-pressed="false"] .sound__off { display: inline; }
-
-/* Three hairlines that breathe while there is sound, and lie flat without it. */
-.sound__bars {
-  display: inline-flex;
-  align-items: flex-end;
-  gap: 3px;
-  height: 12px;
+.sound {
+  justify-content: center;
+  min-width: 48px;
+  padding: 0;
 }
-.sound__bars i {
-  width: 1px;
-  height: 100%;
-  background: currentColor;
-  transform-origin: bottom;
-  animation: sound-bar 1.1s var(--ease-soft) infinite alternate;
+/* Speaker icon: waves while there is sound, a small cross without it. */
+.sound__icon {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
-.sound__bars i:nth-child(2) { animation-delay: -.45s; animation-duration: .9s; }
-.sound__bars i:nth-child(3) { animation-delay: -.8s; animation-duration: 1.3s; }
-.sound[aria-pressed="false"] .sound__bars i { animation: none; transform: scaleY(.18); }
-@keyframes sound-bar {
-  from { transform: scaleY(.25); }
-  to { transform: scaleY(1); }
-}
+.sound__mute,
+.sound[aria-pressed="false"] .sound__waves { display: none; }
+.sound[aria-pressed="false"] .sound__mute { display: inline; }
 
 /* A scroll or a tap during the film points at the way out (or at the sound). */
 .is-nudged { animation: nudge 1.1s var(--ease-soft); }
@@ -457,6 +455,7 @@ em { font-style: italic; }
     padding: var(--m) calc(var(--m) + var(--safe-r)) var(--m) calc(clamp(24px, 7vw, 140px) + var(--safe-l));
     color: var(--ivory);
     min-height: 360px;
+    height: 100svh; /* framed: the whole composition stays within the visible area */
   }
 
   .stage {
@@ -752,7 +751,6 @@ em { font-style: italic; }
   .date { transition: opacity 1.4s var(--ease-soft) 1s; }
   .cue::after { animation: none; transform: none; }
   .reel, .hero[data-reel] .reel, .hero[data-reel] .plate { transform: none !important; }
-  .sound__bars i { animation: none; }
   .is-nudged { animation: none; }
   .js [data-reveal] { transform: none; transition: opacity 1s var(--ease-soft) var(--d, 0s); }
 }
