@@ -3,7 +3,7 @@
 // Phases (hero[data-phase]):
 //   loading  → waiting for the main photograph (and fonts, briefly)
 //   intro    → colour photograph, slow push-in, desaturation, titles
-//   settled  → the cover: black & white, hold for colour, "Ver o filme" / "Rever"
+//   settled  → the cover: black & white, hold for colour, "Ver o vídeo" / "Rever"
 //   film     → the save-the-date film plays over the cover, then dissolves back:
 //              the short cut the first time, the full film on "Rever"
 //
@@ -21,6 +21,8 @@
     if (hero) {
       hero.dataset.phase = 'settled';
       hero.dataset.colour = 'off';
+      hero.dataset.watched = 'yes';
+      document.documentElement.classList.remove('is-gated');
       hero.querySelector('.replay').hidden = true;
     }
     return;
@@ -41,6 +43,7 @@
   const soundBtn = hero.querySelector('.sound');
   const depth = hero.querySelector('.depth');
   const motionBtn = hero.querySelector('.motion');
+  const cta = hero.querySelector('.film-cta');
 
   const reduceMq = matchMedia('(prefers-reduced-motion: reduce)');
   const framedMq = matchMedia('(min-aspect-ratio: 4/5)');
@@ -63,6 +66,7 @@
     endedAt: 0,
     plays: 0, // the first play is the short cut, every replay the full film
     watched: false,
+    unlocked: false, // the film has played with sound once: replays need no fresh gesture
   };
   // Gyroscope depth: target (tx, ty) from the sensor, eased (x, y, s) on screen.
   const motion = { on: false, base: null, tx: 0, ty: 0, x: 0, y: 0, s: 1, raf: 0, visible: true };
@@ -72,6 +76,14 @@
   // ───────── helpers ─────────
 
   const now = () => performance.now();
+
+  // iPhone Safari: how far down the page rests at its top (styles.css --run), so the
+  // photograph runs on behind the status bar. Zero everywhere else.
+  const runway = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--run')) || 0;
+  function toRunway(smooth) {
+    const r = runway();
+    if (Math.abs(scrollY - r) > 1) scrollTo({ top: r, left: 0, behavior: smooth ? 'smooth' : 'instant' });
+  }
 
   function setPhase(phase) {
     state.phase = phase;
@@ -136,6 +148,7 @@
     const wasFilm = state.phase === 'film';
     freeze(() => setPhase('settled'));
     state.endedAt = now();
+    hero.dataset.cta = 'on';
     if (wasFilm) {
       stopReel();
       state.watched = true;
@@ -155,28 +168,33 @@
 
     if (reduceMq.matches) {
       // No camera move, no cuts: a still crossfade from colour to black & white.
-      anim(plate, [{ opacity: 0 }, { opacity: 1 }], { duration: 900, easing: 'linear' });
-      anim(colourShot, [{ opacity: 1 }, { opacity: 0 }], { delay: 1200, duration: 2600, easing: 'ease-in-out' });
-      lines.forEach((el, i) => anim(el, [{ opacity: 0 }, { opacity: 1 }], { delay: 2200 + i * 400, duration: 1400 }));
-      anim(date, [{ opacity: 0 }, { opacity: 1 }], { delay: 3400, duration: 1400 });
+      anim(plate, [{ opacity: 0 }, { opacity: 1 }], { duration: 300, easing: 'linear' });
+      anim(colourShot, [{ opacity: 1 }, { opacity: 0 }], { delay: 500, duration: 1700, easing: 'ease-in-out' });
+      lines.forEach((el, i) => anim(el, [{ opacity: 0 }, { opacity: 1 }], { delay: 400 + i * 250, duration: 1200 }));
+      anim(date, [{ opacity: 0 }, { opacity: 1 }], { delay: 1000, duration: 1200 });
+      wait(CTA_AT, run).then(() => { hero.dataset.cta = 'on'; }).catch(() => {});
       await Promise.all(running.map((a) => a.finished));
       if (run === state.run) settle();
       return;
     }
 
-    anim(plate, [{ opacity: 0 }, { opacity: 1 }], { duration: 1100, easing: 'cubic-bezier(.45,0,.25,1)' });
-    anim(plate, [{ transform: 'scale(1.06)' }, { transform: 'scale(1)' }], {
-      duration: 7400, easing: 'cubic-bezier(.22,.61,.36,1)',
+    // A short opening (~2.6 s), unhurried but never far from the film: the
+    // photograph is there at once, in colour, and turns black & white while the
+    // names rise in and the date follows. Then the invitation to the film.
+    anim(plate, [{ opacity: 0 }, { opacity: 1 }], { duration: 300, easing: 'linear' });
+    anim(plate, [{ transform: 'scale(1.04)' }, { transform: 'scale(1)' }], {
+      duration: 2100, easing: 'cubic-bezier(.22,.61,.36,1)',
     });
     const desaturate = anim(colourShot, [{ opacity: 1 }, { opacity: 0 }], {
-      delay: 1100, duration: 3600, easing: 'cubic-bezier(.45,0,.25,1)',
+      delay: 500, duration: 1600, easing: 'cubic-bezier(.45,0,.25,1)',
     });
     lines.forEach((el, i) => anim(el, [{ transform: 'translateY(110%)' }, { transform: 'translateY(0)' }], {
-      delay: 2100 + i * 280, duration: 1500, easing: 'cubic-bezier(.16,1,.3,1)',
+      delay: 350 + i * 200, duration: 1300, easing: 'cubic-bezier(.16,1,.3,1)',
     }));
     const dated = anim(date, [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'translateY(0)' }], {
-      delay: 3400, duration: 1200, easing: 'cubic-bezier(.16,1,.3,1)',
+      delay: 950, duration: 1100, easing: 'cubic-bezier(.16,1,.3,1)',
     });
+    wait(CTA_AT, run).then(() => { hero.dataset.cta = 'on'; }).catch(() => {});
 
     // Chain on the animations themselves, not the wall clock, so a slow device
     // never cuts the opening short. Rejects (and stops here) if the run is frozen.
@@ -185,12 +203,19 @@
     if (run === state.run) settle();
   }
 
+  // The invitation to the film arrives while the date is still settling, so the
+  // screen never rests empty; from then on a tap plays the film.
+  const CTA_AT = 1500; // ms into the opening
+  const ctaShown = () => hero.dataset.cta === 'on';
+  const tappable = () => state.phase === 'settled' || (state.phase === 'intro' && ctaShown());
+
   // ───────── film ─────────
   //
+  // The film always starts with sound; only the sound button turns it off.
   // play() is called synchronously inside the gesture that asked for the film,
-  // the only way a browser lets it start with sound. If sound is refused anyway
-  // (a mouse wheel is not a gesture that counts), it plays muted and the sound
-  // button is offered instead.
+  // the only way a browser lets it start audibly. Gestures that do not count —
+  // a mouse wheel, or a swipe on iOS (Safari only accepts a clean tap) — never
+  // start it muted: they point at "Ver o vídeo" and the next tap plays it.
 
   const canFade = (() => {
     // iOS keeps volume read-only at 1: there, sound can only be cut, not faded.
@@ -225,36 +250,30 @@
     soundBtn.setAttribute('aria-label', on ? 'Desligar o som' : 'Ligar o som');
   }
 
-  // Sound is on by default. When the browser refuses it (no gesture yet: a mouse
-  // wheel, or a swipe on some phones) the film carries on muted, and the very
-  // first tap, click or key anywhere — the first gesture the browser accepts —
-  // turns it on, without having to find the icon.
-  let refused = false;
-  let unmutedAt = -Infinity;
-
-  function soundRefused() {
-    setSound(false);
-    refused = true;
-    nudge(soundBtn);
+  // Whether play() may start with sound right now: inside a gesture the browser
+  // accepts, or once the film has already played audibly (WebKit then lifts the
+  // element's restriction; Chrome remembers that the visitor has interacted).
+  // Browsers without the User Activation API just try: a refusal lands in abortFilm().
+  function soundAllowed() {
+    const ua = navigator.userActivation;
+    return state.unlocked || !ua || ua.isActive;
   }
 
-  function claimSound(e) {
-    if (!refused || state.phase !== 'film') return;
-    // The icon, "Saltar" and "Convite" do their own thing.
-    if (e.target.closest && e.target.closest('.sound, .skip, .cue')) return;
-    refused = false;
-    unmutedAt = now();
-    setSound(true);
-    if (canFade) reel.volume = 1;
-  }
-  // pointerup, not pointerdown: on touch screens only the lift counts as a gesture.
-  addEventListener('pointerup', claimSound, true);
-  addEventListener('keydown', claimSound, true);
-
-  function nudge(el) {
-    el.classList.remove('is-nudged');
+  function nudge(el, cls = 'is-nudged') {
+    el.classList.remove(cls);
     el.offsetWidth; // restart the animation
-    el.classList.add('is-nudged');
+    el.classList.add(cls);
+    el.addEventListener('animationend', () => el.classList.remove(cls), { once: true });
+  }
+
+  // A gesture that cannot start the film with sound (a swipe on iPhone, a wheel):
+  // the invitation to the film answers instead — on a first visit — or "Ver o vídeo".
+  let calledAt = -Infinity;
+  function askForTap() {
+    if (!tappable()) return; // the opening plays out first
+    if (now() - calledAt < 1600) return;
+    calledAt = now();
+    nudge(filmFirst() ? cta : replayBtn, 'is-calling');
   }
 
   function playFilm() {
@@ -277,19 +296,16 @@
     // video start and then pauses it the moment it becomes audible.
     const activated = !navigator.userActivation || navigator.userActivation.isActive;
     if (canFade) reel.volume = activated ? 0 : 1;
-    refused = false;
-    setSound(true);
+    setSound(true); // every film starts with sound
 
     const started = reel.play();
     if (started && started.catch) {
       started.catch((err) => {
         if (token !== reelToken || state.phase !== 'film') return;
-        if (err && err.name === 'NotAllowedError' && !reel.muted) {
-          soundRefused();
-          reel.play().catch(() => { if (token === reelToken) settle(); });
-        } else if (!err || err.name !== 'AbortError') {
-          settle();
-        }
+        if (err && err.name === 'AbortError') return;
+        // Sound refused after all: back to the cover, never a muted film.
+        if (err && err.name === 'NotAllowedError') abortFilm();
+        else settle();
       });
     }
 
@@ -313,21 +329,37 @@
     }, REEL_OUT);
   }
 
+  // The film was asked for but the browser would not let it start with sound:
+  // quietly back to the cover, as if it had not been asked for, and ask for a tap.
+  function abortFilm() {
+    reelToken++;
+    cancelAnimationFrame(fadeRaf);
+    freeze(() => setPhase('settled'));
+    delete hero.dataset.reel;
+    pauseReel();
+    state.plays = Math.max(0, state.plays - 1); // the short cut is still to come
+    state.endedAt = 0;
+    gate.triggered = false;
+    askForTap();
+  }
+
   // The picture comes up only once frames are really moving, so a slow start
   // just holds the cover a little longer instead of showing a black frame.
   reel.addEventListener('playing', () => {
     if (state.phase !== 'film' || hero.dataset.reel !== 'wait') return;
     hero.dataset.reel = 'on';
+    if (!reel.muted) state.unlocked = true;
     if (!reel.muted && reel.volume < 1) fadeVolume(1, 700);
     watchEnd(reelToken);
   });
 
-  // A browser that stops the film for having sound without permission: carry on muted.
+  // Paused by the browser (sound not allowed after all) or by the system
+  // (Control Center, a call, headphones out): before the picture is up it is
+  // a refusal; once the film is running, the cover takes over.
   reel.addEventListener('pause', () => {
-    if (selfPause || reel.ended || document.hidden || state.phase !== 'film' || reel.muted) return;
-    const token = reelToken;
-    soundRefused();
-    reel.play().catch(() => { if (token === reelToken) settle(); });
+    if (selfPause || reel.ended || document.hidden || state.phase !== 'film') return;
+    if (hero.dataset.reel === 'wait') abortFilm();
+    else settle();
   });
 
   // Dissolve slightly before the last frame: the film closes on "28.08.2027"
@@ -341,7 +373,6 @@
   reel.addEventListener('error', () => { if (state.phase === 'film') settle(); });
 
   soundBtn.addEventListener('click', () => {
-    refused = false; // a choice made with the icon is final for this film
     const on = reel.muted;
     setSound(on);
     if (on && canFade) reel.volume = 1;
@@ -352,16 +383,21 @@
 
   function replay() {
     if (state.phase !== 'settled' || now() - state.endedAt < COOLDOWN) return;
+    if (!soundAllowed()) { askForTap(); return; } // a pull or a wheel: ask for a tap
     gate.triggered = true; // asked for directly: the first scroll no longer needs to
     playFilm();
   }
+
+  // On a first visit, before the film, the photograph is one big "play" button:
+  // a tap is the one gesture every browser accepts for sound.
+  const filmFirst = () => gate.closed && !gate.triggered && !state.watched;
 
   // Colour is shown only while the photograph is held (finger, mouse or key).
   const PRESS_SLOP = 14; // px of movement that turns a press into a gesture
   let press = null;
 
   function holdColour(id, x, y) {
-    if (state.phase !== 'settled') return;
+    if (state.phase !== 'settled' || filmFirst()) return;
     press = { id, x, y };
     setColour(true);
     if (!state.interacted) {
@@ -398,28 +434,31 @@
   });
   hit.addEventListener('blur', () => releaseColour());
 
-  // A tap during the opening skips to the cover. During the film it only points
-  // at the controls: a stray tap must not cut it short.
+  // The opening always plays out: taps count only once the cover has landed.
+  // First visit: a tap on the cover plays the film. During the film a tap only
+  // points at the controls: a stray tap must not cut it short.
   hit.addEventListener('click', () => {
-    if (state.phase === 'intro') settle();
-    else if (state.phase === 'film' && now() - unmutedAt > 600) nudge(skipBtn); // that tap was for the sound
+    if (tappable() && filmFirst()) startFilm();
+    else if (state.phase === 'film') nudge(skipBtn);
   });
 
   replayBtn.addEventListener('click', () => {
-    if (state.phase === 'intro') settle();
     if (state.phase === 'settled') { state.endedAt = 0; replay(); }
   });
 
   // Deliberate pull at the top of the page. Normal scrolling is never captured:
   // listeners are passive and only gestures that *start* while the page has
   // been resting at the top count — momentum from scrolling back up does not.
-  let topSince = scrollY <= 0 ? now() : Infinity;
+  // "At the top": resting on the runway (or above it), allowing for a stray fraction
+  // of a pixel (Chrome on Android leaves one).
+  const atTop = () => scrollY < runway() + 2;
+  let topSince = atTop() ? now() : Infinity;
   addEventListener('scroll', () => {
-    if (scrollY <= 0) { if (topSince === Infinity) topSince = now(); }
+    if (atTop()) { if (topSince === Infinity) topSince = now(); }
     else topSince = Infinity;
   }, { passive: true });
 
-  const canArm = () => state.phase === 'settled' && scrollY <= 0
+  const canArm = () => state.phase === 'settled' && atTop()
     && now() - topSince > TOP_DWELL && now() - state.endedAt > COOLDOWN;
 
   function showPull(p) {
@@ -432,6 +471,17 @@
     }
   }
 
+  // Scrolled up into the runway (a pull at the top, say): once the finger is off and
+  // the page has come to rest, ease back so the photograph sits where it belongs.
+  let fingers = 0;
+  let snapIdle = 0;
+  const countFingers = (e) => { fingers = e.touches.length; };
+  ['touchstart', 'touchend', 'touchcancel'].forEach((type) => addEventListener(type, countFingers, { passive: true, capture: true }));
+  addEventListener('scroll', () => {
+    clearTimeout(snapIdle);
+    snapIdle = setTimeout(() => { if (!fingers && scrollY < runway() - 1) toRunway(true); }, 220);
+  }, { passive: true });
+
   let touch = null;
   addEventListener('touchstart', (e) => {
     touch = e.touches.length === 1 && canArm()
@@ -442,7 +492,7 @@
     if (!touch) return;
     const dx = e.touches[0].clientX - touch.x;
     touch.dy = e.touches[0].clientY - touch.y;
-    if (touch.dy < -10 || Math.abs(dx) > Math.abs(touch.dy) + 12 || scrollY > 0) {
+    if (touch.dy < -10 || Math.abs(dx) > Math.abs(touch.dy) + 12 || !atTop()) {
       touch = null; showPull(0); return;
     }
     showPull(touch.dy / PULL_TOUCH);
@@ -484,14 +534,17 @@
 
   const GATE_SWIPE = 24; // px of upward finger travel that counts as a scroll
   const DRAIN_IDLE = 280; // ms without wheel events before scrolling is handed back
-  const gate = { closed: false, triggered: false, queued: false, draining: false, touchY: null, touching: false, swiped: false, idle: 0, nudged: 0 };
+  const gate = { closed: false, triggered: false, draining: false, touchY: null, touching: false, swiped: false, idle: 0, nudged: 0 };
   const root = document.documentElement;
   const nonPassive = { passive: false };
   const forwardKeys = new Set(['ArrowDown', 'PageDown', 'End', ' ', 'Spacebar']);
 
+  const HIT_LABEL = hit.getAttribute('aria-label');
+
   function closeGate() {
     gate.closed = true;
     root.classList.add('is-gated');
+    hit.setAttribute('aria-label', 'Ver o nosso vídeo');
     addEventListener('wheel', onGateWheel, nonPassive);
     addEventListener('touchstart', onGateTouchStart, { passive: true });
     addEventListener('touchmove', onGateTouchMove, nonPassive);
@@ -505,6 +558,7 @@
     gate.closed = false;
     gate.draining = true;
     root.classList.remove('is-gated');
+    hit.setAttribute('aria-label', HIT_LABEL);
     drainLater();
   }
 
@@ -525,17 +579,16 @@
   }
 
   function startFilm() {
-    if (gate.triggered) return;
+    if (gate.triggered || !tappable()) return; // not before the invitation to the film is up
+    // Only from a gesture that allows sound; anything else asks for a tap instead.
+    if (!soundAllowed()) { askForTap(); return; }
     gate.triggered = true;
-    if (state.phase === 'loading') { gate.queued = true; return; }
-    if (state.phase === 'film') return;
-    // From the opening or the cover alike: hand over without a jump.
-    playFilm();
+    playFilm(); // inside the gesture
   }
 
   // Scrolling while the film plays does nothing but point at "Saltar".
   function nudgeSkip() {
-    if (state.phase !== 'film' || now() - gate.nudged < 1200 || now() - unmutedAt < 600) return;
+    if (state.phase !== 'film' || now() - gate.nudged < 1200) return;
     gate.nudged = now();
     nudge(skipBtn);
   }
@@ -574,7 +627,7 @@
     if (gate.triggered) nudgeSkip(); else startFilm();
   }
 
-  // "Convite" is an explicit request to read the invitation: it always goes there.
+  // "Ver mais" is an explicit request to read the invitation: it always goes there.
   hero.querySelector('.cue').addEventListener('click', () => {
     if (state.phase === 'intro' || state.phase === 'film') settle();
     openGate();
@@ -599,7 +652,7 @@
         pauseReel();
       } else if (pausedHidden) {
         pausedHidden = false;
-        reel.play().catch(() => { soundRefused(); reel.play().catch(() => settle()); });
+        reel.play().catch(() => settle());
       }
       return;
     }
@@ -716,11 +769,20 @@
     // Start buffering the film while the opening plays, unless data is being saved.
     if (!(navigator.connection && navigator.connection.saveData)) reel.preload = 'auto';
     intro().catch(() => {});
-    if (gate.queued) { gate.triggered = false; startFilm(); } // scrolled while loading
   });
 
+  // iPhone Safari: settle on the runway before anything else looks at the scroll position.
+  if (!location.hash) {
+    toRunway();
+    addEventListener('load', () => { if (scrollY < runway()) toRunway(); });
+  }
+  framedMq.addEventListener?.('change', () => { if (scrollY < innerHeight * 0.5) toRunway(); });
+
   // Hold the page only on a fresh arrival at the top, never for reduced motion.
-  if (scrollY <= 0 && !location.hash && !reduceMq.matches) closeGate();
+  // (index.html already set is-gated before the first paint; lift it otherwise,
+  // e.g. a reload that Safari restores halfway down the page.)
+  if (atTop() && !location.hash && !reduceMq.matches) closeGate();
+  else root.classList.remove('is-gated');
 
   // Never stay on a black screen if the photograph is slow or fails.
   setTimeout(() => {

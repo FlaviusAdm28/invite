@@ -8,6 +8,7 @@
   --ink: #1c1916;
   --taupe: #8c7f70;
   --taupe-soft: #b6aa9b;
+  --taupe-deep: #6b5f52; /* taupe that still reads as text on ivory */
 
   --serif: "Cormorant Garamond", "Cormorant", Garamond, "Times New Roman", serif;
   --sans: "Jost", "Helvetica Neue", Arial, sans-serif;
@@ -20,6 +21,28 @@
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-l: env(safe-area-inset-left, 0px);
   --safe-r: env(safe-area-inset-right, 0px);
+
+  /* Light letters over the photograph or the film: a shadow that hugs the
+     letterforms only (no haze), so they hold over her white blouse too. */
+  --letter-shadow: 0 1px 1px rgba(14, 12, 10, .55), 0 0 3px rgba(14, 12, 10, .45);
+  --mark-shadow: drop-shadow(0 1px 1px rgba(14, 12, 10, .55)) drop-shadow(0 0 2px rgba(14, 12, 10, .4));
+
+  /* Edge-to-edge on iPhone Safari (see below); zero everywhere else. */
+  --run: 0px;
+  --bleed: 0px;
+}
+
+/* iPhone Safari only (html.ios-bleed, set in index.html), portrait only.
+   Safari paints a flat strip behind the status bar and the Dynamic Island while a
+   page rests at the very top, but draws the page itself there once it is scrolled.
+   So the page opens --run px down (main.js), with that much more photograph above,
+   and the photograph and the film fill the screen up to the clock. The hero also
+   runs --bleed px past the large viewport, so it reaches the bottom edge under the
+   floating toolbar instead of the next section showing through there.
+   Verified on iOS 27.3 (iPhone 17); undocumented Safari behaviour, so re-check it
+   with new iOS versions. */
+@media not all and (min-aspect-ratio: 4/5) {
+  html.ios-bleed { --run: 80px; --bleed: 100px; }
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -35,8 +58,14 @@ html {
   scrollbar-gutter: stable;
 }
 
-/* First visit: held at the top until the film has played or been skipped (see main.js). */
-html.is-gated { overflow: hidden; }
+/* First visit: held at the top until the film has played or been skipped (see main.js).
+   The script holds touch, wheel and keys; overflow is locked only where there is a
+   scrollbar to drag. On iPhone the document stays scrollable: with a locked
+   document, Safari 26 tends to paint flat strips behind the status bar and the
+   toolbar instead of letting the photograph run on behind them. */
+@media (hover: hover) and (pointer: fine) {
+  html.is-gated { overflow: hidden; }
+}
 
 body {
   margin: 0;
@@ -59,11 +88,12 @@ em { font-style: italic; }
 
 .hero {
   position: relative;
-  /* The whole screen, edge to edge: on iOS Safari the photograph and the film run
-     on under the status bar and the (translucent) toolbar instead of stopping short
-     of them. svh would leave those strips to the page background. */
+  /* The whole screen, edge to edge: the photograph and the film run on under the
+     browser's (translucent) toolbar instead of stopping short of it — svh would
+     leave that strip to the page background — and, on iPhone, under the status bar
+     and to the bottom edge as well (--run, --bleed). */
   height: 100vh;
-  height: 100lvh;
+  height: calc(100lvh + var(--run) + var(--bleed));
   min-height: 480px;
   overflow: hidden;
   background: var(--charcoal);
@@ -171,7 +201,7 @@ em { font-style: italic; }
 .titles {
   position: absolute;
   z-index: 3;
-  top: calc(var(--safe-t) + clamp(26px, 6.5svh, 64px));
+  top: calc(var(--run) + var(--safe-t) + clamp(26px, 6.5svh, 64px));
   right: calc(var(--safe-r) + var(--gutter));
   left: calc(var(--safe-l) + var(--gutter));
   text-align: right;
@@ -210,7 +240,7 @@ em { font-style: italic; }
 .date {
   margin: clamp(14px, 2.4svh, 22px) 0 0;
   font-family: var(--sans);
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 400;
   letter-spacing: .38em;
   margin-right: -.38em; /* optical: cancel trailing tracking */
@@ -228,13 +258,13 @@ em { font-style: italic; }
   min-height: 44px;
   margin-bottom: 10px;
   padding: 0 18px 0 15px;
-  white-space: nowrap; /* may extend over the column above "Convite" on narrow phones */
+  white-space: nowrap; /* may extend over the column above "Ver mais" on narrow phones */
   border: 1px solid rgba(242, 237, 228, .6);
   border-radius: 999px;
   background: rgba(20, 18, 16, .22);
   color: var(--ivory);
   font: inherit;
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: .26em;
   text-transform: uppercase;
   pointer-events: auto;
@@ -259,19 +289,20 @@ em { font-style: italic; }
   z-index: 3;
   left: calc(var(--safe-l) + var(--gutter));
   right: calc(var(--safe-r) + var(--gutter));
-  bottom: calc(var(--safe-b) + clamp(10px, 2.6svh, 26px));
+  bottom: calc(var(--bleed) + var(--safe-b) + clamp(10px, 2.6svh, 26px));
   /* …but the controls stay clear of the browser's toolbar: lift them by the part
      of the screen it covers (lvh − svh, zero where there is no toolbar). */
-  bottom: calc(var(--safe-b) + clamp(10px, 2.6svh, 26px) + (100lvh - 100svh));
+  bottom: calc(var(--bleed) + var(--safe-b) + clamp(10px, 2.6svh, 26px) + (100lvh - 100svh));
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
   color: var(--ivory);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 400;
   letter-spacing: .3em;
   text-transform: uppercase;
+  text-shadow: var(--letter-shadow); /* "Rever", "Mantém premido", "Saltar", "Ver mais"… */
   pointer-events: none;
 }
 
@@ -317,7 +348,7 @@ em { font-style: italic; }
   border: 0;
   background: none;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   letter-spacing: .24em;
   text-transform: inherit;
   cursor: pointer;
@@ -332,6 +363,84 @@ em { font-style: italic; }
 .hero[data-watched="yes"] .replay__first { display: none; }
 .replay[hidden] { display: none; }
 .hero:not([data-phase="settled"]) .replay { opacity: 0; pointer-events: none; }
+
+/* First visit, until the first film has played (or been skipped): nothing but the
+   photograph, the names, the date and the invitation to the film. The controls —
+   "Rever", motion, "Ver mais" — and hold-for-colour (main.js) come after it. */
+html.is-gated :is(.replay, .motion) { opacity: 0; visibility: hidden; pointer-events: none; }
+
+.film-cta {
+  position: absolute;
+  z-index: 3;
+  left: calc(var(--safe-l) + var(--gutter));
+  right: calc(var(--safe-r) + var(--gutter));
+  bottom: calc(var(--bleed) + var(--safe-b) + clamp(30px, 6.5svh, 60px) + (100lvh - 100svh));
+  margin: 0;
+  text-align: center;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400; /* the light cut is too thin to hold over the photograph */
+  font-size: clamp(1.4rem, 6vw, 1.8rem);
+  line-height: 1.2;
+  color: var(--ivory);
+  text-shadow: var(--letter-shadow);
+  pointer-events: none; /* the photograph underneath takes the tap */
+  /* Arriving and leaving move this element; the float moves the inner span; the
+     answer to a swipe uses `scale`. Kept apart so none interrupts another (when
+     they shared one transform, the tap's exit could snap instead of fade).
+     Transform, not `translate`, for the exit: Safari's compositor jumps a
+     `translate` transition to its end in a frame, then fades it in place. */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  transition: opacity .5s var(--ease-soft), visibility 0s .5s, transform .5s var(--ease-soft);
+}
+/* Set while the date is still settling (main.js): it rises into place… */
+html.is-gated .hero[data-cta="on"]:not([data-phase="film"])[data-watched="no"] .film-cta {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition: opacity .8s var(--ease-soft), visibility 0s, transform 1.2s var(--ease-out);
+}
+/* …and on the tap it fades as it sinks towards "Saltar", which rises in below. */
+.hero[data-phase="film"] .film-cta {
+  transform: translateY(16px);
+  transition: opacity .7s var(--ease-soft), visibility 0s .9s, transform 1s var(--ease-soft);
+}
+/* The float: a slow drift of a few pixels, always running, never seen to stop. */
+.film-cta__float {
+  display: inline-block;
+  animation: cta-float 5.5s cubic-bezier(.37, 0, .63, 1) infinite;
+}
+/* A fine stroke beneath that draws out as the phrase rises and draws back as it
+   settles — one breath, same length and curve as the float (they start together) —
+   the gesture of the line beside "Ver mais": an invitation to touch, without a
+   player's play button. */
+.film-cta__float::after {
+  content: "";
+  display: block;
+  width: 46px;
+  height: 1px;
+  margin: .55em auto 0;
+  background: currentColor;
+  box-shadow: 0 1px 1px rgba(14, 12, 10, .5);
+  transform-origin: 50% 50%; /* (the stroke takes the same shadow as the letters) */
+  animation: cta-stroke 5.5s cubic-bezier(.37, 0, .63, 1) infinite;
+}
+@keyframes cta-stroke {
+  0%, 100% { transform: scaleX(.2); opacity: .5; }
+  50% { transform: scaleX(1); opacity: 1; }
+}
+@keyframes cta-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+/* A swipe (no sound without a tap) makes it answer, then it floats on. */
+.film-cta.is-calling { animation: cta-call 1.2s var(--ease-soft); }
+@keyframes cta-call { 0%, 100% { scale: 1; } 35% { scale: 1.03; } 70% { scale: 1; } }
+
+.cue { transition: opacity 1s var(--ease-soft), visibility 0s; }
+html.is-gated .cue { position: absolute; right: 0; bottom: 0; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .4s var(--ease-soft), visibility 0s .4s; }
 
 /* Film controls: they take the place of "Rever" while the film plays. */
 .reel-ctrl {
@@ -357,7 +466,7 @@ em { font-style: italic; }
   border: 0;
   background: none;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   letter-spacing: .24em;
   text-transform: inherit;
   white-space: nowrap;
@@ -376,6 +485,7 @@ em { font-style: italic; }
 .sound__icon {
   width: 22px;
   height: 22px;
+  filter: var(--mark-shadow);
   fill: none;
   stroke: currentColor;
   stroke-width: 1.3;
@@ -394,13 +504,21 @@ em { font-style: italic; }
   60% { opacity: 1; transform: none; }
 }
 
+/* A swipe or a wheel cannot start the film with sound: "Ver o vídeo" asks for a tap. */
+.is-calling { animation: calling 1.8s var(--ease-soft); }
+@keyframes calling {
+  0%, 100% { opacity: .92; transform: none; }
+  20%, 60% { opacity: 1; transform: translateX(5px); }
+  40%, 80% { opacity: .45; transform: none; }
+}
+
 .cue {
   flex: none;
   margin-left: auto;
   padding-left: 12px;
   gap: 14px;
   color: inherit;
-  font-size: 13px;
+  font-size: 14px;
   letter-spacing: .24em;
   text-decoration: none;
   pointer-events: auto;
@@ -412,6 +530,7 @@ em { font-style: italic; }
   width: 1px;
   height: 36px;
   background: currentColor;
+  box-shadow: 0 1px 1px rgba(14, 12, 10, .5);
   transform-origin: top;
   animation: cue 2.6s var(--ease-soft) infinite;
 }
@@ -426,7 +545,7 @@ em { font-style: italic; }
 .pull {
   position: absolute;
   z-index: 4;
-  top: calc(var(--safe-t) + 10px);
+  top: calc(var(--run) + var(--safe-t) + 10px);
   left: 50%;
   width: 64px;
   height: 1px;
@@ -485,13 +604,24 @@ em { font-style: italic; }
   .names { font-size: min(8.4vw, 15svh, 9.5rem); line-height: .9; }
   .line--second { padding-left: .9em; }
   .line em { color: var(--taupe-soft); }
-  .date { margin-right: 0; font-size: 11.5px; }
+  .date { margin-right: 0; font-size: 12.5px; }
 
   .bar {
     position: static;
     grid-column: 1;
     grid-row: 2;
     color: var(--taupe-soft);
+    text-shadow: none; /* beside the frame, on the dark page: nothing to hold against */
+  }
+  .sound__icon, .cue::after { filter: none; box-shadow: none; }
+  .film-cta {
+    position: static;
+    grid-column: 1;
+    grid-row: 2;
+    align-self: end;
+    padding-bottom: 8px;
+    text-align: left;
+    text-shadow: none;
   }
   .hint { opacity: 0; }
   .hero[data-hint="show"] .hint { opacity: 1; }
@@ -523,8 +653,8 @@ em { font-style: italic; }
 .intertitle {
   display: grid;
   place-items: center;
-  min-height: 78svh;
-  padding: clamp(80px, 16svh, 160px) var(--gutter);
+  min-height: 60svh;
+  padding: clamp(64px, 11svh, 120px) var(--gutter);
   background: var(--charcoal);
   color: var(--ivory);
   text-align: center;
@@ -532,11 +662,11 @@ em { font-style: italic; }
 
 .intertitle__text {
   margin: 0;
-  max-width: 22ch;
+  max-width: 18ch;
   font-family: var(--serif);
   font-style: italic;
   font-weight: 300;
-  font-size: clamp(1.75rem, 7.4vw, 3.1rem);
+  font-size: clamp(2.1rem, 9vw, 3.6rem);
   line-height: 1.18;
 }
 .intertitle__text span { display: block; text-wrap: balance; }
@@ -547,16 +677,16 @@ em { font-style: italic; }
 .invite {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  padding: clamp(88px, 16svh, 160px) calc(var(--gutter) + var(--safe-r)) clamp(64px, 10svh, 120px) calc(var(--gutter) + var(--safe-l));
+  padding: clamp(64px, 10svh, 112px) calc(var(--gutter) + var(--safe-r)) clamp(48px, 7svh, 88px) calc(var(--gutter) + var(--safe-l));
   background: var(--ivory);
   color: var(--ink);
 }
 
 .eyebrow {
-  margin: 0 0 clamp(28px, 5svh, 44px);
-  font-size: 10.5px;
+  margin: 0 0 clamp(18px, 3svh, 30px);
+  font-size: 12px;
   font-weight: 400;
-  letter-spacing: .34em;
+  letter-spacing: .3em;
   text-transform: uppercase;
   color: var(--taupe);
 }
@@ -566,26 +696,34 @@ em { font-style: italic; }
   max-width: 19ch;
   font-family: var(--serif);
   font-weight: 300;
-  font-size: clamp(1.7rem, 7.2vw, 2.9rem);
+  font-size: clamp(1.95rem, 8.4vw, 3.2rem);
   line-height: 1.16;
   text-wrap: pretty;
+}
+/* Set by phrase, not left to the measure: the opening sentence on its own, in the
+   italic taupe of the "&", a breath, then the rest in three even lines. */
+.invite__lead > span { display: block; }
+.invite__lead-open {
+  margin-bottom: .32em;
+  font-style: italic;
+  color: var(--taupe);
 }
 
 .invite__photo {
   justify-self: end;
-  width: 72%;
-  margin: clamp(56px, 10svh, 96px) calc(-1 * var(--gutter)) 0 0;
+  width: 80%;
+  margin: clamp(36px, 6svh, 72px) calc(-1 * var(--gutter)) 0 0;
   aspect-ratio: 1080 / 1618;
   background: var(--paper);
 }
 .invite__photo img { width: 100%; height: 100%; object-fit: cover; }
 
 .invite__names {
-  margin-top: clamp(48px, 9svh, 88px);
+  margin-top: clamp(28px, 5svh, 56px);
 }
 
 .names--invite {
-  font-size: clamp(3.2rem, 17vw, 7.5rem);
+  font-size: clamp(3.4rem, 18.5vw, 8rem);
   line-height: .95;
 }
 .names--invite span { display: block; }
@@ -598,8 +736,8 @@ em { font-style: italic; }
 .names--invite span:last-child { padding-left: .55em; }
 
 .invite__date {
-  margin: clamp(22px, 4svh, 36px) 0 0;
-  font-size: 12px;
+  margin: clamp(16px, 3svh, 28px) 0 0;
+  font-size: 14px;
   font-weight: 400;
   letter-spacing: .3em;
   text-transform: uppercase;
@@ -608,7 +746,7 @@ em { font-style: italic; }
 /* ───────────────────────── Details (prepared for later) ───────────────────────── */
 
 .details {
-  padding: 0 calc(var(--gutter) + var(--safe-r)) clamp(72px, 12svh, 120px) calc(var(--gutter) + var(--safe-l));
+  padding: 0 calc(var(--gutter) + var(--safe-r)) clamp(48px, 8svh, 96px) calc(var(--gutter) + var(--safe-l));
   background: var(--ivory);
   color: var(--ink);
 }
@@ -620,7 +758,7 @@ em { font-style: italic; }
 .detail[hidden] { display: none; }
 .detail__title {
   margin: 0 0 12px;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 400;
   letter-spacing: .32em;
   text-transform: uppercase;
@@ -629,17 +767,17 @@ em { font-style: italic; }
 .detail__body {
   margin: 0;
   font-family: var(--serif);
-  font-size: 1.5rem;
+  font-size: 1.65rem;
   line-height: 1.25;
 }
-.detail__meta { margin: 8px 0 0; font-size: 14px; letter-spacing: .06em; }
+.detail__meta { margin: 8px 0 0; font-size: 15px; letter-spacing: .06em; }
 .detail__link {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
   margin-top: 12px;
   color: inherit;
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: .28em;
   text-transform: uppercase;
   text-underline-offset: 6px;
@@ -647,14 +785,14 @@ em { font-style: italic; }
 
 .details__soon {
   margin: 0;
-  padding-top: 32px;
+  padding-top: 28px;
   border-top: 1px solid rgba(28, 25, 22, .14);
   font-family: var(--serif);
   font-style: italic;
-  font-size: 1.2rem;
-  line-height: 1.45;
-  color: var(--taupe);
-  max-width: 30ch;
+  font-size: 1.5rem;
+  line-height: 1.35;
+  color: var(--taupe-deep);
+  max-width: 24ch;
   text-wrap: balance;
 }
 
@@ -668,7 +806,7 @@ em { font-style: italic; }
 .coda img { width: 100%; height: 100%; object-fit: cover; }
 
 .footer {
-  padding: clamp(64px, 12svh, 120px) var(--gutter) calc(var(--safe-b) + clamp(48px, 8svh, 80px));
+  padding: clamp(56px, 9svh, 100px) var(--gutter) calc(var(--safe-b) + clamp(48px, 8svh, 80px));
   background: var(--charcoal);
   color: var(--ivory);
   text-align: center;
@@ -677,19 +815,19 @@ em { font-style: italic; }
   margin: 0;
   font-family: var(--serif);
   font-weight: 300;
-  font-size: 2.6rem;
+  font-size: 3.4rem;
   line-height: 1;
 }
 .footer__mark em { color: var(--taupe-soft); font-size: .8em; }
 .footer__date {
   margin: 18px 0 0;
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: .38em;
   margin-right: -.38em;
 }
 .footer__credit {
-  margin: 40px 0 0;
-  font-size: 10px;
+  margin: 32px 0 0;
+  font-size: 11.5px;
   letter-spacing: .24em;
   text-transform: uppercase;
   color: var(--taupe);
@@ -704,7 +842,7 @@ em { font-style: italic; }
     padding-right: clamp(48px, 9vw, 180px);
   }
   .eyebrow, .invite__lead { grid-column: 1; }
-  .invite__lead { font-size: clamp(2.2rem, 3.4vw, 3.2rem); }
+  .invite__lead { font-size: clamp(2.4rem, 3.6vw, 3.6rem); }
   .invite__photo {
     grid-column: 2;
     grid-row: 1 / span 3;
@@ -750,8 +888,12 @@ em { font-style: italic; }
   .line--second > span { transition-delay: .35s; }
   .date { transition: opacity 1.4s var(--ease-soft) 1s; }
   .cue::after { animation: none; transform: none; }
+  .film-cta, .hero .film-cta { transform: none !important; }
+  .film-cta__float, .film-cta__float::after, .film-cta.is-calling { animation: none; }
   .reel, .hero[data-reel] .reel, .hero[data-reel] .plate { transform: none !important; }
   .is-nudged { animation: none; }
+  .is-calling { animation: calling-still 1.8s var(--ease-soft); }
+  @keyframes calling-still { 0%, 100% { opacity: .92; } 25%, 75% { opacity: .4; } 50% { opacity: 1; } }
   .js [data-reveal] { transform: none; transition: opacity 1s var(--ease-soft) var(--d, 0s); }
 }
 

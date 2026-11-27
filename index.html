@@ -3,7 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- Safari 26 ignores theme-color (it tints from the page itself); older iOS and Android use it. -->
   <meta name="theme-color" content="#141210">
+  <!-- Opened from the home screen, iPhone gives the page the whole screen, Dynamic Island included. -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="R &amp; F">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="media/web/icon-180.png">
   <meta name="description" content="Raquel & Flávio — 28.08.2027">
   <title>Raquel &amp; Flávio · 28.08.2027</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23141210'/%3E%3Ctext x='16' y='22' font-family='Georgia,serif' font-size='16' fill='%23f2ede4' text-anchor='middle'%3ER%26amp;F%3C/text%3E%3C/svg%3E">
@@ -16,7 +24,11 @@
         imagesrcset="media/web/main-720.jpg 720w, media/web/main-1080.jpg 1080w, media/web/main-1440.jpg 1440w"
         imagesizes="(min-aspect-ratio: 4/5) 62vh, 100vw" fetchpriority="high">
   <link rel="stylesheet" href="src/styles.css">
-  <script>document.documentElement.classList.add('js')</script>
+  <!-- Before the first paint: a fresh arrival is held for the film (main.js decides for
+       good and lifts it otherwise), so "Ver mais" never flashes on screen. A reload is an
+       arrival too: browsers would restore the old scroll offset (Chrome on Android even
+       a fraction of a pixel at the top), which skipped the whole opening. -->
+  <script>(function (r) { r.classList.add('js'); if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; if (/iPhone/.test(navigator.userAgent) && !navigator.standalone) r.classList.add('ios-bleed'); if (!location.hash && !matchMedia('(prefers-reduced-motion: reduce)').matches) r.classList.add('is-gated'); })(document.documentElement)</script>
   <script src="src/main.js" defer></script>
 </head>
 <body>
@@ -57,11 +69,15 @@
     <p class="date"><time datetime="2027-08-28">28.08.2027</time></p>
   </div>
 
+  <!-- First visit: once the opening has landed, the only thing asked of the guest.
+       The whole photograph is the button (.hit); this is its caption. -->
+  <p class="film-cta" aria-hidden="true"><span class="film-cta__float"><span class="hint__touch">Toca para ver o nosso vídeo</span><span class="hint__mouse">Clica para ver o nosso vídeo</span></span></p>
+
   <div class="bar">
     <div class="bar__main">
       <button class="motion" type="button" hidden>Ativar movimento</button>
       <p class="hint" aria-hidden="true"><span class="hint__touch">Mantém premido<br>para ver a cor</span><span class="hint__mouse">Mantém o clique<br>para ver a cor</span></p>
-      <button class="replay" type="button"><span class="replay__first">Ver o filme</span><span class="replay__again">Rever</span></button>
+      <button class="replay" type="button"><span class="replay__first">Ver o vídeo</span><span class="replay__again">Rever</span></button>
       <div class="reel-ctrl">
         <button class="skip" type="button">Saltar</button>
         <button class="sound" type="button" aria-pressed="true" aria-label="Desligar o som">
@@ -73,7 +89,7 @@
         </button>
       </div>
     </div>
-    <a class="cue" href="#convite">Convite</a>
+    <a class="cue" href="#convite">Ver mais</a>
   </div>
 
   <span class="pull" aria-hidden="true"></span>
@@ -88,8 +104,13 @@
   </section>
 
   <section class="invite" id="convite" aria-labelledby="invite-title">
-    <p class="eyebrow" data-reveal>Convite</p>
-    <p class="invite__lead" id="invite-title" data-reveal>Temos o prazer de vos convidar para celebrar connosco o início deste novo capítulo.</p>
+    <p class="eyebrow" data-reveal>Save the date</p>
+    <p class="invite__lead" id="invite-title" data-reveal>
+      <span class="invite__lead-open">Guardem esta data.</span>
+      <span>Vamos casar,</span>
+      <span>e não imaginamos</span>
+      <span>este dia sem vocês.</span>
+    </p>
 
     <figure class="invite__photo" data-reveal>
       <img src="media/web/156-1080.jpg"

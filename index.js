@@ -16,11 +16,13 @@ const types = {
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
   '.jpg': 'image/jpeg',
+  '.png': 'image/png',
+  '.webmanifest': 'application/manifest+json',
   '.mp4': 'video/mp4',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
 };
-const allowed = /^\/(index\.html|src\/[\w.-]+|media\/web\/[\w.-]+\.(jpg|mp4))$/;
+const allowed = /^\/(index\.html|manifest\.webmanifest|src\/[\w.-]+|media\/web\/[\w.-]+\.(jpg|png|mp4))$/;
 
 function handler(req, res) {
   let url = decodeURIComponent(new URL(req.url, 'http://x').pathname);

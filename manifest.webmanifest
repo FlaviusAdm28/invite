@@ -1,0 +1,14 @@
+{
+  "name": "Raquel & Flávio · 28.08.2027",
+  "short_name": "R & F",
+  "lang": "pt-PT",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#141210",
+  "theme_color": "#141210",
+  "icons": [
+    { "src": "media/web/icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "media/web/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
